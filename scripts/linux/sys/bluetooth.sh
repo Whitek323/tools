@@ -1,0 +1,2 @@
+systemctl start bluetooth.service
+

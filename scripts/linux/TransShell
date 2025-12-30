@@ -1,0 +1,8 @@
+trans -b :th 'brief'
+trans -shell en:th
+trans -L th
+trans -L th+en
+trans :th http://www.w3.org/
+trans :th file://input.txt
+echo "Hello" | trans -b :th
+ trans -b -p :ja "สวัสดี"
