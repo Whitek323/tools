@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="th" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual | Nvim Cheatsheet</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/dark.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-semibold" href="manual.html">Manual</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div id="navMain" class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="manual.html">curl</a></li>
+          <li class="nav-item"><a class="nav-link" href="bash.html">Bash</a></li>
+          <li class="nav-item"><a class="nav-link active" aria-current="page" href="nvim.html">Nvim</a></li>
+          <li class="nav-item"><a class="nav-link disabled" aria-disabled="true" href="#">(เร็วๆ นี้)</a></li>
+        </ul>
+        <span class="navbar-text text-muted">Nvim Cheatsheet • คัดลอกได้ทันที</span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <!-- Search & Filters -->
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-md-6">
+        <label class="form-label">ค้นหาคำสั่ง/คีย์/คำอธิบาย</label>
+        <input id="search" type="text" class="form-control" placeholder='เช่น: "+y หรือ gg / G หรือ :%s'>
+        <div class="text-muted mt-1" style="font-size:.9rem;">กด <kbd>/</kbd> เพื่อโฟกัสช่องค้นหา • พิมพ์หลายคำได้ (AND)</div>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">หมวดหมู่</label>
+        <select id="category" class="form-select">
+          <option value="all">ทั้งหมด</option>
+          <option>โหมดพื้นฐาน</option>
+          <option>การเคลื่อนที่ (motions)</option>
+          <option>เลือก/Visual</option>
+          <option>แก้ไข/ลบ/คัดลอก</option>
+          <option>ค้นหา & แทนที่</option>
+          <option>บัฟเฟอร์/แท็บ/สปลิท</option>
+          <option>รีจิสเตอร์ & คลิปบอร์ด</option>
+          <option>มาร์ก/จัมป์</option>
+          <option>แมโคร</option>
+          <option>โฟลด์</option>
+          <option>ไฟล์/บันทึก/เซสชัน</option>
+          <option>สารพัดทริก</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-grid">
+        <button id="btnReset" class="btn btn-secondary">รีเซ็ต</button>
+      </div>
+    </div>
+
+    <hr class="border-secondary my-4"/>
+
+    <!-- Commands list -->
+    <div id="cmdList" class="row g-3"></div>
+
+    <div class="mt-4 text-muted">
+      หมายเหตุ: บางคีย์ขึ้นกับการตั้งค่า/ปลั๊กอินและระบบคลิปบอร์ด (Linux ต้องมี <code>xclip</code> หรือ <code>wl-clipboard</code>); ใช้ <code>:checkhealth</code> ตรวจสอบได้
+    </div>
+  </div>
+
+  <script>
+    // ---------- Utilities ----------
+    const escHTML = (s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    async function copyText(txt){
+      try{ await navigator.clipboard.writeText(txt); }catch(e){
+        const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+      }
+    }
+
+    // ---------- Data ----------
+    // รูปแบบ: { name, category, desc, keys:[{k,meaning}], examples:[{cmd,note}] }
+    const COMMANDS = [
+      // โหมดพื้นฐาน
+      {
+        name:"โหมดพื้นฐาน",
+        category:"โหมดพื้นฐาน",
+        desc:"สลับโหมดต่าง ๆ",
+        keys:[
+          {k:"<Esc>", meaning:"กลับ Normal mode"},
+          {k:"i / I", meaning:"Insert ก่อนตำแหน่ง / ต้นบรรทัด"},
+          {k:"a / A", meaning:"Insert หลังตำแหน่ง / ท้ายบรรทัด"},
+          {k:"o / O", meaning:"ขึ้นบรรทัดใหม่ด้านล่าง/บน แล้วเข้า Insert"},
+          {k:"v / V / <C-v>", meaning:"Visual char / Visual line / Visual block"},
+          {k:":", meaning:"Command-line mode"},
+          {k:"R", meaning:"Replace mode"},
+          {k:"ZZ / ZQ", meaning:"บันทึกและออก / ออกโดยไม่บันทึก"}
+        ],
+        examples:[
+          {cmd:":help index", note:"อ่านคู่มือ"},
+          {cmd:":q, :qa, :w, :wq, :x, :q!", note:"ออก/บันทึกพื้นฐาน"}
+        ]
+      },
+
+      // การเคลื่อนที่
+      {
+        name:"การเคลื่อนที่ (พื้นฐาน)",
+        category:"การเคลื่อนที่ (motions)",
+        desc:"ย้ายเคอร์เซอร์เร็ว",
+        keys:[
+          {k:"h j k l", meaning:"ซ้าย ลง ขึ้น ขวา"},
+          {k:"w / b / e / ge", meaning:"ไปต้น/ย้อน/ท้ายคำ / ท้ายคำก่อนหน้า"},
+          {k:"W / B / E", meaning:"เวอร์ชันใช้ช่องว่างเป็นตัวคั่น"},
+          {k:"0 / ^ / $ / g_", meaning:"ต้นบรรทัด / ตัวแรกไม่ว่าง / ท้ายบรรทัด / ท้ายก่อน whitespace"},
+          {k:"gg / G", meaning:"ไปบรรทัดแรก / บรรทัดสุดท้าย"},
+          {k:"{ / }", meaning:"ย่อหน้า ก่อนหน้า / ถัดไป"},
+          {k:"% ", meaning:"แมตช์วงเล็บ (), {}, []"},
+          {k:"H / M / L", meaning:"บน/กลาง/ล่างของจอ"},
+          {k:"<C-u> / <C-d>", meaning:"เลื่อนขึ้น/ลง ครึ่งหน้า"},
+          {k:"<C-b> / <C-f>", meaning:"เลื่อนขึ้น/ลง ทั้งหน้า"},
+          {k:"zt / zz / zb", meaning:"จัดบรรทัดปัจจุบันไปบน/กลาง/ล่างจอ"}
+        ],
+        examples:[
+          {cmd:"5j", note:"ลง 5 บรรทัด"},
+          {cmd:"3w", note:"ไปข้างหน้าทีละคำ 3 ครั้ง"}
+        ]
+      },
+      {
+        name:"การค้นหาตัวอักษรในบรรทัด",
+        category:"การเคลื่อนที่ (motions)",
+        desc:"เล็งตัวอักษรเร็วในบรรทัด",
+        keys:[
+          {k:"f{char} / F{char}", meaning:"กระโดดไปยังอักขระถัดไป/ก่อนหน้า"},
+          {k:"t{char} / T{char}", meaning:"ไปก่อนหน้าอักขระนั้น 1 ตัว"},
+          {k:"; / ,", meaning:"ทำซ้ำทิศทางเดิม / ทิศทางกลับ"}
+        ],
+        examples:[
+          {cmd:"fa; ;", note:"หาตัว a ถัดไป แล้วทำซ้ำ"}
+        ]
+      },
+
+      // Visual
+      {
+        name:"Visual selections",
+        category:"เลือก/Visual",
+        desc:"เลือกข้อความและแก้ไข",
+        keys:[
+          {k:"v / V / <C-v>", meaning:"เลือกตัวอักษร / ทั้งบรรทัด / บล็อกคอลัมน์"},
+          {k:"aw / iw", meaning:"เลือก 'a word' / 'inner word'"},
+          {k:"a) / i)  (และ a] a} a' a\" ...)", meaning:"เลือกภายใน/รวมวงเล็บ/อัญประกาศ"},
+          {k:"ap / ip", meaning:"ย่อหน้า (around/inner paragraph)"}
+        ],
+        examples:[
+          {cmd:"viw", note:"เลือกคำปัจจุบันแบบ inner"},
+          {cmd:"<C-v> I// <Esc>", note:"เติม // ที่ต้นหลายบรรทัดพร้อมกัน"}
+        ]
+      },
+
+      // แก้ไข/ลบ/คัดลอก
+      {
+        name:"แก้ไข/ลบ/คัดลอก (operators)",
+        category:"แก้ไข/ลบ/คัดลอก",
+        desc:"ใช้ operator + motion",
+        keys:[
+          {k:"x / X", meaning:"ลบตัวอักษรถัดไป / ก่อนหน้า"},
+          {k:"r{char}", meaning:"แทนที่ตัวเดียวด้วย {char}"},
+          {k:"s / S", meaning:"แทนที่ตัว/บรรทัด แล้วเข้า Insert"},
+          {k:"d{motion}", meaning:"ลบตาม motion (เช่น diw, dd, d$)"},
+          {k:"c{motion}", meaning:"ลบแล้วเข้า Insert (เช่น ciw, cc)"},
+          {k:"y{motion}", meaning:"คัดลอกตาม motion (เช่น yiw, yy)"},
+          {k:"p / P", meaning:"วางหลัง / ก่อน"},
+          {k:"gp / gP", meaning:"วางแล้วเลื่อนไปท้ายส่วนที่วาง"},
+          {k:".", meaning:"ทำคำสั่งล่าสุดซ้ำ"},
+          {k:"u / <C-r>", meaning:"ย้อนกลับ / ทำซ้ำ (redo)"},
+          {k:"J", meaning:"รวมบรรทัดถัดไป"},
+          {k:"~ / gu / gU", meaning:"สลับเคส / เป็นเล็ก / เป็นใหญ่"},
+          {k:">> / << / ==", meaning:"indent ขวา/ซ้าย / จัด format บรรทัด"}
+        ],
+        examples:[
+          {cmd:"ciw", note:"แก้ไขคำปัจจุบัน"},
+          {cmd:"viwU", note:"เลือกคำแล้วแปลงเป็นตัวใหญ่"},
+          {cmd:"gUw", note:"ทำให้คำถัดไปเป็นตัวใหญ่"}
+        ]
+      },
+
+      // ค้นหา & แทนที่
+      {
+        name:"ค้นหา & ไฮไลต์",
+        category:"ค้นหา & แทนที่",
+        desc:"ค้นหาแบบ regex",
+        keys:[
+          {k:"/pattern  / ?pattern", meaning:"ค้นหาข้างหน้า / ย้อนกลับ"},
+          {k:"n / N", meaning:"ผลลัพธ์ถัดไป / ก่อนหน้า"},
+          {k:"* / #", meaning:"ค้นหาคำที่อยู่ใต้เคอร์เซอร์ (หน้า/หลัง)"},
+          {k:":noh", meaning:"ล้างไฮไลต์ค้นหา"}
+        ],
+        examples:[
+          {cmd:"/TODO\\c", note:"หา TODO ไม่สนเคส (\\c)"},
+          {cmd:":set hlsearch incsearch", note:"เปิดไฮไลต์และค้นหาแบบไลฟ์"}
+        ]
+      },
+      {
+        name:"แทนที่ (substitute)",
+        category:"ค้นหา & แทนที่",
+        desc:"แทนที่ในบรรทัด/ทั้งไฟล์",
+        keys:[
+          {k:":s/เก่า/ใหม่/g", meaning:"แทนที่ทั้งบรรทัด"},
+          {k:":%s/เก่า/ใหม่/gc", meaning:"ทั้งไฟล์ + ยืนยัน"},
+          {k:":'<,'>s/เก่า/ใหม่/g", meaning:"เฉพาะช่วงที่เลือก (Visual)"},
+          {k:"\\v", meaning:"very magic regex (ลดการ escape)"}
+        ],
+        examples:[
+          {cmd:":%s/\\vfoo(\\d+)/bar\\1/g", note:"ใช้ very magic"}
+        ]
+      },
+
+      // บัฟเฟอร์/แท็บ/สปลิท
+      {
+        name:"บัฟเฟอร์",
+        category:"บัฟเฟอร์/แท็บ/สปลิท",
+        desc:"จัดการไฟล์ที่เปิดอยู่",
+        keys:[
+          {k:":e file", meaning:"เปิดไฟล์"},
+          {k:":ls / :buffers", meaning:"รายการบัฟเฟอร์"},
+          {k:":bnext / :bprev / :b# / :b N", meaning:"วนถัดไป/ก่อนหน้า/กลับบัฟเฟอร์ล่าสุด/ไปหมายเลข N"},
+          {k:":bd", meaning:"ลบบัฟเฟอร์ (ปิดไฟล์)"}
+        ],
+        examples:[
+          {cmd:":ls", note:"ดูหมายเลขบัฟเฟอร์"},
+          {cmd:":b# :bd", note:"สลับไปไฟล์ล่าสุด แล้วปิด"}
+        ]
+      },
+      {
+        name:"แท็บ & สปลิท",
+        category:"บัฟเฟอร์/แท็บ/สปลิท",
+        desc:"แบ่งหน้าต่างและแท็บ",
+        keys:[
+          {k:":tabnew / :tabnext / :tabclose", meaning:"แท็บใหม่ / ไปแท็บถัดไป / ปิด"},
+          {k:":sp / :vsp", meaning:"แยกแนวนอน / แนวตั้ง"},
+          {k:"<C-w> w/h/j/k/l", meaning:"ย้ายโฟกัสหน้าต่าง"},
+          {k:"<C-w> = / _ / |", meaning:"จัดขนาดเท่ากัน / สูงสุดแนวนอน / กว้างสุดแนวตั้ง"},
+          {k:"<C-w> q / c", meaning:"ปิด window / close"}
+        ],
+        examples:[
+          {cmd:":vsp | :b# | <C-w>w", note:"แยกจอแล้วเปิดบัฟเฟอร์ก่อนหน้า"}
+        ]
+      },
+
+      // รีจิสเตอร์ & คลิปบอร์ด
+      {
+        name:"รีจิสเตอร์ & คลิปบอร์ด",
+        category:"รีจิสเตอร์ & คลิปบอร์ด",
+        desc:"ยก/วางจาก register ต่าง ๆ",
+        keys:[
+          {k:'"ayy / "ap', meaning:"คัดลอกบรรทัดไป a / วางจาก a"},
+          {k:'"+y / "+p', meaning:'คัดลอก/วางกับ clipboard (ระบบ)'},
+          {k:'"*y / "*p', meaning:'คัดลอก/วางกับ selection (X11)'},
+          {k:'"_d', meaning:"ลบแบบไม่เก็บ (black hole)"},
+          {k:'"0p', meaning:"วางล่าสุดที่คัดลอก (register 0)"},
+          {k:":set clipboard=unnamedplus", meaning:"ตั้งให้ใช้คลิปบอร์ดระบบเป็นค่าเริ่ม"}
+        ],
+        examples:[
+          {cmd:'"+y', note:"คัดลอกไปคลิปบอร์ด (Visual เลือกก่อน)"},
+          {cmd:":reg", note:"ดูค่าทุก register"}
+        ]
+      },
+
+      // มาร์ก/จัมป์
+      {
+        name:"มาร์ก/จัมป์",
+        category:"มาร์ก/จัมป์",
+        desc:"กลับไปตำแหน่งเดิมได้ไว",
+        keys:[
+          {k:"ma", meaning:"ตั้งมาร์กชื่อ a ที่ตำแหน่งปัจจุบัน"},
+          {k:"'a / `a", meaning:"กระโดดไปบรรทัด/ตำแหน่งที่มาร์ก a"},
+          {k:"'' / ``", meaning:"กลับตำแหน่งก่อนหน้า (บรรทัด/ตำแหน่ง)"},
+          {k:"<C-o> / <C-i>", meaning:"ย้อน/ไปข้างหน้าใน jump list"},
+          {k:":marks", meaning:"รายการมาร์ก"}
+        ],
+        examples:[
+          {cmd:"ma ... 'a", note:"ตั้งแล้วกลับมาง่าย ๆ"}
+        ]
+      },
+
+      // แมโคร
+      {
+        name:"แมโคร",
+        category:"แมโคร",
+        desc:"อัด/เล่นซ้ำ",
+        keys:[
+          {k:"q{r} ... q", meaning:"เริ่มบันทึกลงรีจิสเตอร์ {r} แล้วกด q เพื่อหยุด"},
+          {k:"@a / @@ / 10@a", meaning:"เล่นแมโครใน a / เล่นซ้ำแมโครล่าสุด / 10 ครั้ง"},
+          {k:":normal {keys}", meaning:"รันคีย์เป็น normal mode หนึ่งครั้ง"}
+        ],
+        examples:[
+          {cmd:"qaI// <Esc>j q  @a", note:"บันทึกการเติม // ต้นบรรทัด แล้วเล่นซ้ำ"}
+        ]
+      },
+
+// โฟลด์
+{
+  name:"โฟลด์",
+  category:"โฟลด์",
+  desc:"พับ/กางโค้ด",
+  keys:[
+    {k:"zf{motion}", meaning:"สร้างโฟลด์ด้วย motion"},
+    {k:"zfap", meaning:"สร้างโฟลด์ครอบย่อหน้าปัจจุบัน"},
+    {k:"za / zo / zc", meaning:"สลับ/กาง/พับ"},
+    {k:"zR / zM", meaning:"กางทั้งหมด / พับทั้งหมด"},
+    {k:":set foldmethod=indent", meaning:"พับตามการเยื้อง"},
+    {k:":set foldmethod=marker", meaning:"พับตาม marker เช่น {{ {"},
+    {k:":set foldmethod=syntax", meaning:"พับตามไวยากรณ์"}
+  ],
+  examples:[
+    {cmd:":set foldmethod=indent", note:"พับจากการเยื้องบรรทัด"}
+  ]
+},
+
+// สารพัดทริก
+{
+  name:"สารพัดทริก",
+  category:"สารพัดทริก",
+  desc:"ของเด็ดที่ใช้จริง",
+  keys:[
+    {k:":%! sort -u", meaning:"ส่งทั้งบัฟเฟอร์เข้า sort -u แล้วแทนด้วยผลลัพธ์"},
+    {k:":read !ls", meaning:"แทรกผลลัพธ์คำสั่ง shell ถัดจากบรรทัดปัจจุบัน"},
+    {k:"ggVG=", meaning:"เลือกทั้งไฟล์ (ggVG) แล้วจัด format (=)"},
+    {k:"=i}", meaning:"จัด format ภายในวงเล็บ { }"},
+    {k:":set ignorecase smartcase", meaning:"ค้นหาไม่สนเคส ยกเว้นมีตัวใหญ่"},
+    {k:":terminal", meaning:"เปิดเทอร์มินัลใน Nvim"}
+  ],
+  examples:[
+    {cmd:":%y+", note:"คัดลอกทั้งไฟล์ไปคลิปบอร์ดระบบ"},
+    {cmd:'vaw "+y', note:"เลือกทั้งคำแล้วคัดลอกไปคลิปบอร์ดระบบ"}
+  ]
+}
+
+         // ---------- Render ----------
+    function card(c){
+      const keyRows = (c.keys||[]).map(o=>`
+        <tr>
+          <td class="text-nowrap"><code>${escHTML(o.k||"")}</code></td>
+          <td>${escHTML(o.meaning||"")}</td>
+        </tr>`).join("");
+
+      const examples = (c.examples||[]).map(ex=>`
+        <div class="mb-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <small class="text-muted">${escHTML(ex.note||"")}</small>
+            <button class="btn btn-sm copy-btn" data-cmd="${encodeURIComponent(ex.cmd)}">คัดลอก</button>
+          </div>
+          <pre class="p-2 rounded"><code>${escHTML(ex.cmd)}</code></pre>
+        </div>`).join("");
+
+      return `
+        <div class="col-12 col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 class="card-title mb-0">${escHTML(c.name)}</h5>
+                <span class="badge badge-cat">${escHTML(c.category)}</span>
+              </div>
+              <p class="card-text">${escHTML(c.desc||"")}</p>
+
+              ${keyRows ? `
+                <div class="table-responsive mb-3">
+                  <table class="table table-sm option-table">
+                    <thead><tr><th style="width:180px">คีย์/คำสั่ง</th><th>ความหมาย</th></tr></thead>
+                    <tbody>${keyRows}</tbody>
+                  </table>
+                </div>` : ""}
+
+              ${examples}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function render(){
+      const q = $("#search").val().trim().toLowerCase();
+      const cat = $("#category").val();
+      const terms = q.split(/\s+/).filter(Boolean);
+      const filtered = COMMANDS.filter(c=>{
+        const inCat = (cat==="all" || c.category===cat);
+        if(!inCat) return false;
+        const hay = [
+          c.name, c.category, c.desc,
+          ...(c.keys||[]).map(o=>o.k+" "+o.meaning),
+          ...(c.examples||[]).map(ex=>ex.cmd+" "+(ex.note||""))
+        ].join(" ").toLowerCase();
+        return terms.every(t => hay.includes(t));
+      });
+      $("#cmdList").html(filtered.map(card).join("") || `
+        <div class="col-12"><div class="alert alert-warning">ไม่พบที่ตรงกับคำค้น</div></div>
+      `);
+    }
+
+    // events
+    $("#search, #category").on("input change", render);
+    $("#btnReset").on("click", ()=>{ $("#search").val(""); $("#category").val("all"); render(); });
+    $(document).on("keydown",(e)=>{ if(e.key==="/"){ e.preventDefault(); $("#search").focus(); } });
+    $(document).on("click",".copy-btn", function(){
+      copyText(decodeURIComponent($(this).data("cmd")));
+      const btn=this; btn.textContent="คัดลอกแล้ว ✓"; setTimeout(()=>btn.textContent="คัดลอก",1200);
+    });
+
+    // init
+    $(function(){ render(); });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

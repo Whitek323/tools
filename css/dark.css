@@ -1,0 +1,84 @@
+/* Dark theme (Bootstrap 5.3) */
+:root[data-bs-theme="dark"]{
+  --bs-body-bg:#0c0e14;
+  --bs-body-color:#e3e7ef;
+  --surface-1:#111525;
+  --surface-2:#161b2e;
+  --border:#2a3350;
+  --muted:#9aa4bf;
+  --accent:#7aa2ff;
+  --code-bg:#0b0e14;
+  --token-bg:#1c2543;
+  --success:#2ea043;
+  --danger:#ef4444;
+}
+
+html,body{ background:var(--bs-body-bg); color:var(--bs-body-color); }
+
+/* Navbar / Footer */
+.navbar{ background:var(--surface-2) !important; border-bottom:1px solid var(--border); }
+.navbar .navbar-brand{ color:#e9edff; }
+.navbar .nav-link{ color:#cbd5ff; }
+.navbar .nav-link.active{ color:#fff; }
+
+/* Cards/sections */
+.card, .section-card{ background:var(--surface-1); border:1px solid var(--border); border-radius:1rem; }
+hr{ border-color:var(--border); }
+
+/* Forms */
+.form-control, .form-select, .btn{
+  background:var(--surface-2); color:var(--bs-body-color); border-color:var(--border);
+}
+.form-control::placeholder{ color:var(--muted); }
+.form-check-input{ border-color:var(--border); background:var(--surface-2); }
+.form-check-input:checked{ background-color:var(--accent); border-color:var(--accent); }
+.input-group-text{ background:var(--surface-2); color:var(--bs-body-color); border-color:var(--border); }
+
+/* Buttons */
+.btn-outline, .btn-outline-secondary, .copy-btn{
+  background:transparent; color:#e6e8ef; border:1px solid var(--border);
+}
+.btn-outline:hover, .btn-outline-secondary:hover, .copy-btn:hover{
+  background:#1e263e; border-color:#39466f;
+}
+.btn-secondary{ background:#223055; border-color:#39466f; }
+
+/* Code blocks */
+pre, code, kbd{
+  background:var(--code-bg) !important; color:#e6e8ef !important;
+  border-radius:.5rem;
+}
+code{ padding:.1rem .35rem; }
+.token{ background:var(--token-bg); border-radius:.35rem; padding:.15rem .4rem; }
+#curlPreview{ white-space:pre-wrap; }
+
+/* Tables in cheatsheet */
+.table.option-table{
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--bs-body-color);
+  --bs-table-border-color: var(--border);
+}
+.table.option-table th{ color:#dfe5ff; }
+.table.option-table td code{ background:var(--token-bg); }
+
+/* Badges / small text */
+.badge-cat{ background:#24314f; color:#dbe4ff; }
+.muted{ color:var(--muted); }
+
+/* Links */
+a, .link-muted{ color:#9fb3ff; }
+a:hover, .link-muted:hover{ color:#c7d2ff; }
+
+/* Focus ring */
+:focus-visible{ outline:2px solid #3858ff; outline-offset:2px; }
+
+/* Scrollbar */
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-track{ background:var(--surface-1); }
+*::-webkit-scrollbar-thumb{
+  background:#293457; border-radius:8px; border:2px solid var(--surface-1);
+}
+
+/* Selection */
+::selection{ background:#2440a6; color:#fff; }
+
